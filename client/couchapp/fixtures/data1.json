@@ -1,0 +1,13 @@
+{
+    "server": "Apache-Coyote/1.1",
+    "path": "http://yellow-query.dev:80/local_application_nightly/search/yellow/getitem.xml?apiversion=19&guid=vb_OLpT-1vza1-fK_HVYuw&languagepreferences=de",
+    "getParams": {
+        "what": "Liip",
+        "where": ""
+    },
+    "postParams": "",
+    "date": "Wed, 07 Dec 2011 14:19:18 GMT",
+    "testCase": "the test case",
+    "testName": "the test name",
+    "data": "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n<response type=\"getItem\">\r\n</response>\r\n"
+}
