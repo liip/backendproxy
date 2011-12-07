@@ -1,6 +1,6 @@
 exports.read = function() {
     var conf = {
-        db : 'backendproxy'
+        db : 'test'
     }
     return conf;
 }
