@@ -41,7 +41,7 @@ function saveRequestToCouch(res, doc) {
 function sendOutput(res, doc) {
     sys.puts('serving doc from couchdb');
     res.setHeader("Content-Type", "text/xml");
-    res.setHeader("Connection", "close");
+    //res.setHeader("Connection", "close");
     res.write(doc);
     res.end();
 }
@@ -158,6 +158,7 @@ function writeMetadata(metadata, content, filename, response){
 }
 
 function init(req, res) {
+    sys.puts(requestId);
     db.getDoc(requestId, function(error, doc) {
         if(error) {
             if ('not_found' === error.error && 'missing' === error.reason) {
