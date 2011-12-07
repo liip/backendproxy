@@ -22,7 +22,7 @@ http.createServer(function (req, res) {
     req.content = '';
     
     requestId = requestFilname(req);
-    nodeExists(req, res);
+    init(req, res);
     
     
 }).listen(8124, "127.0.0.1");
@@ -37,36 +37,27 @@ function saveRequestToCouch(doc) {
     });
 }
 
-function nodeExists(req, res) {
+function init(req, res) {
     db.getDoc(requestId, function(error, doc) {
         if(error) {
             sys.puts(debug.dump(error));
             if ('not_found' === error.error && 'missing' === error.reason) {
-                doc = doRequest(req);
+                doRequest(req, res);
             } else {
                 sys.puts(JSON.stringify(error));
             }
         } else {
-            outputCached(res, doc);
+            output(res, doc.data.data);
         }
     });
 }
 
-function outputCached(res, doc) {
+function output(res, doc) {
     sys.puts('serving doc from couchdb');
     res.setHeader("Content-Type", "text/xml");
-    res.write(doc.data.data);
+    res.write(doc);
     
     res.end();
-}
-
-function outputReal(doc) {
-    sys.puts(debug.dump(doc));
-    // sys.puts('serving doc from couchdb');
-    // res.setHeader("Content-Type", "text/xml");
-    // res.write(doc.data.data);
-    // 
-    // res.end();
 }
 
 
@@ -94,7 +85,7 @@ function requestFilname(req) {
 }
 
 
-function doRequest(req) {
+function doRequest(req, res) {
     var url = urlparse(req.url);
     var httpClient = http.createClient((url.port || 80), url.hostname),
         request = httpClient.request(req.method, 
@@ -123,6 +114,8 @@ function doRequest(req) {
             doc = getDataObject(data, content);
             
             saveRequestToCouch(doc);
+            
+            output(res, doc.data);
         });
         
     });
