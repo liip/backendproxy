@@ -1,15 +1,25 @@
 var http = require('http'),
-    sys = require('sys'),
+    sys = require('util'),
     crypto = require('crypto'),
     path = require('path'),
     urlparse = require('url').parse,
-    cacheroot = 'cache';
+    cacheroot = 'cache',
+    //Helpers
+    debug = require('./libs/helpers/debug'),
+    //DB
+    couchdb = require('./libs/node-couchdb/lib/couchdb'),
+    client = couchdb.createClient(5984, 'localhost'),
+    db = client.db('test');
+    
     fs = require('fs');
 
 http.createServer(function (req, res) {
     req.setEncoding("utf8");
     req.content = '';
     
+    //saveRequestToCouch();
+    loadRequestFromCouch();
+    /*
     getContent(req, function (content) {
         requestFilname(req, function(filename){
             req.content = content;
@@ -25,9 +35,37 @@ http.createServer(function (req, res) {
                 }
             });
         });
-    });
+    })
+    */
 }).listen(8124, "127.0.0.1");
 
+function saveRequestToCouch() {
+    
+    var doc = {
+            server : '',
+            path : '',
+            getParams : '',
+            postParams : '',
+            date : '',
+            data : '',
+            testCase : '',
+            testName : ''
+        }
+    
+    db.saveDoc(doc, function(er, ok) {
+        if (er) {
+            throw new Error(JSON.stringify(er));
+        } else {
+            sys.puts('Saved Request');
+        }
+    });
+}
+
+function loadRequestFromCouch() {
+    db.allDocs({include_docs:true}, function(err, docs) {
+        sys.puts(debug.dump(docs, 10));
+    });
+}
 
 function requestFilname(req, callback) {
     var permanentUrl = req.url.replace(/&lsid=[^&]+/, '').replace(/&from=[^&]+/, '').replace(/&to=[^&]+/, ''),
