@@ -50,11 +50,28 @@ app.index = function () {
   
 };
 
+app.all = function () {
+    $('#menu').hide();
+    $('#all').show();
+    var data;
+    data = $.ajax({
+        url: '_rewrite/api/_design/tests/_view/totalTests',
+        dataType: 'json',
+        success: function (data, textStatus, jqXHR) {
+            console.log("this: ", data, textStatus);
+            debug = data;
+            $('#all strong').html(data.rows[0].value);
+        }
+        
+    });
+}
+
 $(function () { 
   app.s = $.sammy(function () {
     // Index of all databases
     this.get('', app.index);
     this.get("#/", app.index);
+    this.get("#/all", app.all);
   })
   app.s.run();
 });
