@@ -27,40 +27,24 @@ http.createServer(function (req, res) {
     
 }).listen(8124, "127.0.0.1");
 
-function saveRequestToCouch(doc) {
+function saveRequestToCouch(res, doc) {
     db.saveDoc(requestId, {'data' : doc}, function(er, ok) {
         if (er) {
             sys.puts('Error saving the Request ' + JSON.stringify(er));
         } else {
             sys.puts('Saved Request');
+            sendOutput(res, doc.data);
         }
     });
 }
 
-function init(req, res) {
-    db.getDoc(requestId, function(error, doc) {
-        if(error) {
-            sys.puts(debug.dump(error));
-            if ('not_found' === error.error && 'missing' === error.reason) {
-                doRequest(req, res);
-            } else {
-                sys.puts(JSON.stringify(error));
-            }
-        } else {
-            output(res, doc.data.data);
-        }
-    });
-}
-
-function output(res, doc) {
+function sendOutput(res, doc) {
     sys.puts('serving doc from couchdb');
     res.setHeader("Content-Type", "text/xml");
+    res.setHeader("Connection", "close");
     res.write(doc);
-    
     res.end();
 }
-
-
 
 function requestFilname(req) {
     var permanentUrl = req.url.replace(/&lsid=[^&]+/, '').replace(/&from=[^&]+/, '').replace(/&to=[^&]+/, ''),
@@ -74,9 +58,9 @@ function requestFilname(req) {
     hash.update(JSON.stringify(key));
 
     // TODO Change in Frontend 1 impl. to x-test instead of x-testcase
-    var testcase = req.headers['x-test'] || 'default',
-        directory = path.join(cacheroot, testcase);
-    console.log("testcase: " + testcase);
+    //var testcase = req.headers['x-test'] || 'default',
+    //    directory = path.join(cacheroot, testcase);
+    //console.log("testcase: " + testcase);
 
     var host = urlparse(req.url).hostname;
     var filename = host + "_" + hash.digest('hex');
@@ -91,7 +75,6 @@ function doRequest(req, res) {
         request = httpClient.request(req.method, 
                                      url.pathname + (url.search || ''), 
                                      {'host': url.hostname});
-                                     
 
     request.write(req.content);
     request.end();
@@ -113,9 +96,7 @@ function doRequest(req, res) {
             
             doc = getDataObject(data, content);
             
-            saveRequestToCouch(doc);
-            
-            output(res, doc.data);
+            saveRequestToCouch(res, doc);
         });
         
     });
@@ -174,6 +155,20 @@ function writeMetadata(metadata, content, filename, response){
     fs.writeFile(filename + '.metadata', metadata, 'utf8', callback);
     //Binary write for the content to enable nice diff files
     fs.writeFile(filename, content, callback);
+}
+
+function init(req, res) {
+    db.getDoc(requestId, function(error, doc) {
+        if(error) {
+            if ('not_found' === error.error && 'missing' === error.reason) {
+                doRequest(req, res);
+            } else {
+                sys.puts(JSON.stringify(error));
+            }
+        } else {
+            sendOutput(res, doc.data.data);
+        }
+    });
 }
 
 console.log('Server running at http://127.0.0.1:8124/');
