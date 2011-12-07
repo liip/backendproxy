@@ -21,11 +21,10 @@ http.createServer(function (req, res) {
     req.setEncoding("utf8");
     req.content = '';
     
-    getContent(req, function (content) {
-        requestId = requestFilname(req);
-    })
-    
-    doRequest(req);
+    requestId = requestFilname(req);
+    sys.puts("da: " + requestId);
+    nodeExists();
+    //doRequest(req);
     
     return ;
     
@@ -66,6 +65,16 @@ function loadRequestFromCouch() {
     });
 }
 
+function nodeExists() {
+    sys.puts(requestId);
+    // res = db.allDocs({'id':requestId}, function(err, docs) {
+    //     sys.puts(debug.dump(docs, 10));
+    // });
+    // res = client.request(requestId);
+    // sys.puts(requestId);
+    // sys.puts(debug.dump(res));
+}
+
 function requestFilname(req) {
     var permanentUrl = req.url.replace(/&lsid=[^&]+/, '').replace(/&from=[^&]+/, '').replace(/&to=[^&]+/, ''),
         key = {
@@ -80,7 +89,7 @@ function requestFilname(req) {
     // TODO Change in Frontend 1 impl. to x-test instead of x-testcase
     var testcase = req.headers['x-test'] || 'default',
         directory = path.join(cacheroot, testcase);
-    console.log("testcase: " + testcase);
+    //console.log("testcase: " + testcase);
 
     var host = urlparse(req.url).hostname;
     var filename = host + "_" + hash.digest('hex');
