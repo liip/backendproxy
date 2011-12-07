@@ -6,10 +6,12 @@ var http = require('http'),
     cacheroot = 'cache',
     //Helpers
     debug = require('./libs/helpers/debug'),
+    //Conf
+    conf = require('./conf/conf'),
     //DB
     couchdb = require('./libs/node-couchdb/lib/couchdb'),
     client = couchdb.createClient(5984, 'localhost'),
-    db = client.db('test');
+    db = client.db(conf.read().db);
     
     fs = require('fs');
 
