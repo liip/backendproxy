@@ -4,6 +4,8 @@ var http = require('http'),
     path = require('path'),
     urlparse = require('url').parse,
     cacheroot = 'cache',
+    requestId = '',
+    doc = {},
     //Helpers
     debug = require('./libs/helpers/debug'),
     //Conf
@@ -19,42 +21,37 @@ http.createServer(function (req, res) {
     req.setEncoding("utf8");
     req.content = '';
     
-    //saveRequestToCouch();
-    loadRequestFromCouch();
-    /*
     getContent(req, function (content) {
-        requestFilname(req, function(filename){
-            req.content = content;
-            path.exists(filename, function (exists){
-                if(exists){
-                    console.log('serving from File' + filename + ' for \n' + req.url);
-                    serveFile(filename, res);
-                }else{
-                    console.log('Fetching response from backend for \n' + req.url);
-                    doRequest(req, function(metadata, content){
-                        writeMetadata(metadata, content, filename, res);
-                    });
-                }
-            });
-        });
+        requestId = requestFilname(req);
     })
-    */
+    
+    doRequest(req);
+    
+    return ;
+    
+    // getContent(req, function (content) {
+    //     requestFilname(req, function(filename){
+    //         req.content = content;
+    //         path.exists(filename, function (exists){
+    //             if(exists){
+    //                 console.log('serving from File' + filename + ' for \n' + req.url);
+    //                 serveFile(filename, res);
+    //             }else{
+    //                 console.log('Fetching response from backend for \n' + req.url);
+    //                 doRequest(req, function(metadata, content){
+    //                     writeMetadata(metadata, content, filename, res);
+    //                 });
+    //             }
+    //         });
+    //     });
+    // })
+    
 }).listen(8124, "127.0.0.1");
 
-function saveRequestToCouch() {
+function saveRequestToCouch(doc) {
+    sys.puts(requestId);
     
-    var doc = {
-            server : '',
-            path : '',
-            getParams : '',
-            postParams : '',
-            date : '',
-            data : '',
-            testCase : '',
-            testName : ''
-        }
-    
-    db.saveDoc(doc, function(er, ok) {
+    db.saveDoc(requestId, {'data' : doc}, function(er, ok) {
         if (er) {
             throw new Error(JSON.stringify(er));
         } else {
@@ -69,7 +66,7 @@ function loadRequestFromCouch() {
     });
 }
 
-function requestFilname(req, callback) {
+function requestFilname(req) {
     var permanentUrl = req.url.replace(/&lsid=[^&]+/, '').replace(/&from=[^&]+/, '').replace(/&to=[^&]+/, ''),
         key = {
             url: permanentUrl,
@@ -77,21 +74,18 @@ function requestFilname(req, callback) {
             body: req.content
         },
         hash = crypto.createHash('sha1');
-        
+
     hash.update(JSON.stringify(key));
-    
+
     // TODO Change in Frontend 1 impl. to x-test instead of x-testcase
     var testcase = req.headers['x-test'] || 'default',
         directory = path.join(cacheroot, testcase);
     console.log("testcase: " + testcase);
 
-    
-    fs.mkdir(directory, 0777, function() {
-        var host = urlparse(req.url).hostname;
-        var filename = host + "_" + hash.digest('hex');
-        var filepath = path.join(directory, filename);
-        callback(filepath);
-    });
+    var host = urlparse(req.url).hostname;
+    var filename = host + "_" + hash.digest('hex');
+
+    return filename;
 }
 
 
@@ -120,11 +114,30 @@ function doRequest(req, callback) {
                     statusCode: response.statusCode
                 }
             };
+            // sys.puts(debug.dump(JSON.stringify(data),10));
+            // sys.puts("--- --- --- --- ");
+            // sys.puts(debug.dump(content,10));
             
-            callback(JSON.stringify(data), content);
+            doc = getDataObject(data, content);
+            saveRequestToCouch(doc);
+            //callback(JSON.stringify(data), content);
         });
         
     });
+}
+
+function getDataObject(data, content) {
+    doc = {
+            server : data.response.headers.server,
+            path : data.request.url,
+            getParams : '{1,2,3}',
+            postParams : '{1,2,3}',
+            date : data.response.headers.date,
+            data : content,
+            testCase : 'the test case',
+            testName : 'the test name'
+        };
+    return doc;
 }
 
 function getContent(stream, callback) {
@@ -142,8 +155,6 @@ function getContent(stream, callback) {
 function serveFile(filename, response) {
     var headersWritten = false;
     var body = null;
-    
-    
     
     fs.readFile(filename + '.metadata', 'utf8', function(err, filecontent) {
         if (err) throw err;
