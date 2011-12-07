@@ -22,58 +22,54 @@ http.createServer(function (req, res) {
     req.content = '';
     
     requestId = requestFilname(req);
-    sys.puts("da: " + requestId);
-    nodeExists();
-    //doRequest(req);
+    nodeExists(req, res);
     
-    return ;
-    
-    // getContent(req, function (content) {
-    //     requestFilname(req, function(filename){
-    //         req.content = content;
-    //         path.exists(filename, function (exists){
-    //             if(exists){
-    //                 console.log('serving from File' + filename + ' for \n' + req.url);
-    //                 serveFile(filename, res);
-    //             }else{
-    //                 console.log('Fetching response from backend for \n' + req.url);
-    //                 doRequest(req, function(metadata, content){
-    //                     writeMetadata(metadata, content, filename, res);
-    //                 });
-    //             }
-    //         });
-    //     });
-    // })
     
 }).listen(8124, "127.0.0.1");
 
 function saveRequestToCouch(doc) {
-    sys.puts(requestId);
-    
     db.saveDoc(requestId, {'data' : doc}, function(er, ok) {
         if (er) {
-            throw new Error(JSON.stringify(er));
+            sys.puts('Error saving the Request ' + JSON.stringify(er));
         } else {
             sys.puts('Saved Request');
         }
     });
 }
 
-function loadRequestFromCouch() {
-    db.allDocs({include_docs:true}, function(err, docs) {
-        sys.puts(debug.dump(docs, 10));
+function nodeExists(req, res) {
+    db.getDoc(requestId, function(error, doc) {
+        if(error) {
+            sys.puts(debug.dump(error));
+            if ('not_found' === error.error && 'missing' === error.reason) {
+                doc = doRequest(req);
+            } else {
+                sys.puts(JSON.stringify(error));
+            }
+        } else {
+            outputCached(res, doc);
+        }
     });
 }
 
-function nodeExists() {
-    sys.puts(requestId);
-    // res = db.allDocs({'id':requestId}, function(err, docs) {
-    //     sys.puts(debug.dump(docs, 10));
-    // });
-    // res = client.request(requestId);
-    // sys.puts(requestId);
-    // sys.puts(debug.dump(res));
+function outputCached(res, doc) {
+    sys.puts('serving doc from couchdb');
+    res.setHeader("Content-Type", "text/xml");
+    res.write(doc.data.data);
+    
+    res.end();
 }
+
+function outputReal(doc) {
+    sys.puts(debug.dump(doc));
+    // sys.puts('serving doc from couchdb');
+    // res.setHeader("Content-Type", "text/xml");
+    // res.write(doc.data.data);
+    // 
+    // res.end();
+}
+
+
 
 function requestFilname(req) {
     var permanentUrl = req.url.replace(/&lsid=[^&]+/, '').replace(/&from=[^&]+/, '').replace(/&to=[^&]+/, ''),
@@ -89,7 +85,7 @@ function requestFilname(req) {
     // TODO Change in Frontend 1 impl. to x-test instead of x-testcase
     var testcase = req.headers['x-test'] || 'default',
         directory = path.join(cacheroot, testcase);
-    //console.log("testcase: " + testcase);
+    console.log("testcase: " + testcase);
 
     var host = urlparse(req.url).hostname;
     var filename = host + "_" + hash.digest('hex');
@@ -98,7 +94,7 @@ function requestFilname(req) {
 }
 
 
-function doRequest(req, callback) {
+function doRequest(req) {
     var url = urlparse(req.url);
     var httpClient = http.createClient((url.port || 80), url.hostname),
         request = httpClient.request(req.method, 
@@ -123,13 +119,10 @@ function doRequest(req, callback) {
                     statusCode: response.statusCode
                 }
             };
-            // sys.puts(debug.dump(JSON.stringify(data),10));
-            // sys.puts("--- --- --- --- ");
-            // sys.puts(debug.dump(content,10));
             
             doc = getDataObject(data, content);
+            
             saveRequestToCouch(doc);
-            //callback(JSON.stringify(data), content);
         });
         
     });
