@@ -1,30 +1,41 @@
 crypto = require('crypto'),
 urlparse = require('url').parse,
+query = require('querystring'),
+debug = require('./debug'),
 
 exports.getContent = function(stream, callback) {
     var content = "";
-    
+
     stream.on("data", function(chunk) {
         content += chunk;
     });
-    
+
     stream.on("end", function() {
         callback(content);
     });
 }
 
-exports.getDataObject = function(data, content) {
-    doc = {
-            server : data.response.headers.server,
-            path : data.request.url,
-            getParams : '{1,2,3}',
-            postParams : '{1,2,3}',
-            date : data.response.headers.date,
-            data : content,
-            testCase : 'the test case',
-            testName : 'the test name'
-        };
-    return doc;
+exports.getDataObject = function(req, res, content) {
+    /*
+    TODO : okapi curl doesnt send what/where
+    */
+    var data = {
+        request: {
+            method: req.method,
+            path: req.url,
+            testCase: req.headers['x-test'],
+            testName: "something",
+            data: content,
+            postParams: "",
+            getParams: ""
+        },
+        response: {
+            statusCode: res.statusCode,
+            headers: res.headers,
+            statusCode: res.statusCode
+        }
+    }
+    return data;
 }
 
 exports.getRequestId = function(req) {
